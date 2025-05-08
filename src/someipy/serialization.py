@@ -645,6 +645,7 @@ class SomeIpDynamicSizeArray(Generic[T]):
         self._data: List[T] = []
         self._length_field_length = 4  # The length of the length field in bytes. It can be either 0 (no length field), 1, 2 or 4 bytes.
         self._single_element_length = len(class_reference())
+        self._dynamic_length = 0 # This is the actual length computed during deserialization
         self._class_reference = class_reference
 
     @property
@@ -707,12 +708,17 @@ class SomeIpDynamicSizeArray(Generic[T]):
         Returns:
             int: The length of the object.
         """
-        return self.length_field_length + len(self.data) * self._single_element_length
+        if hasattr(self._class_reference, "_has_dynamic_size") and self._class_reference._has_dynamic_size == True:
+            return self._dynamic_length
+        else:
+            return self.length_field_length + len(self.data) * self._single_element_length
 
     def serialize(self) -> bytes:
         """
         Serialize the object into bytes by iterating over its attributes, excluding those starting with double underscores or underscores.
         For each attribute, it calls the `serialize` method of the attribute and appends the returned bytes to the output.
+
+        Warning: does not support dynamic size elements yet.
 
         Returns:
             bytes: The serialized representation of the object as bytes.
@@ -755,14 +761,24 @@ class SomeIpDynamicSizeArray(Generic[T]):
         else:
             return
 
-        number_of_elements = length / self._single_element_length
-        for i in range(int(number_of_elements)):
-            start_idx = (i * self._single_element_length) + self._length_field_length
-            end_idx = start_idx + self._single_element_length
-            next_element = self._class_reference().deserialize(
-                payload[start_idx:end_idx]
-            )
-            self.data.append(next_element)
+        if hasattr(self._class_reference, "_has_dynamic_size") and self._class_reference._has_dynamic_size == True:
+            # If the length is not known before deserialization, first deserialize using the
+            # remaining payload and then calculate the length
+            idx = self._length_field_length
+            while idx < length:
+                next_element = self._class_reference().deserialize(payload[idx:])
+                idx += len(next_element)
+                self.data.append(next_element)
+            self._dynamic_length = idx
+        else:
+            number_of_elements = length / self._single_element_length
+            for i in range(int(number_of_elements)):
+                start_idx = (i * self._single_element_length) + self._length_field_length
+                end_idx = start_idx + self._single_element_length
+                next_element = self._class_reference().deserialize(
+                    payload[start_idx:end_idx]
+                )
+                self.data.append(next_element)
 
         return self
 
