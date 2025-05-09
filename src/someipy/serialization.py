@@ -482,6 +482,17 @@ class SomeIpPayload:
             payload_length += len(value)
         return payload_length
 
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+
+        This method returns a string representation of the object by iterating over the attributes of the object and calling the `__repr__` method of each attribute.
+
+        Returns:
+            str: The string representation of the object.
+        """
+        return "{" + ", ".join([f"{k}: {v}" for k, v in self.__dict__.items() if not k.startswith("__")]) + "}"
+
     def serialize(self) -> bytes:
         """
         Serialize the object into bytes to be transported on the wire.
@@ -588,6 +599,17 @@ class SomeIpFixedSizeArray(Generic[T]):
             return 0
         else:
             return len(self.data) * len(self.data[0])
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+
+        This method returns a string representation of the object by iterating over the `data` list and calling the `__repr__` method of each element.
+
+        Returns:
+            str: The string representation of the object.
+        """
+        return "[" + ", ".join([str(x) for x in self.data]) + "]"
 
     def serialize(self) -> bytes:
         """
@@ -712,6 +734,17 @@ class SomeIpDynamicSizeArray(Generic[T]):
             return self._dynamic_length
         else:
             return self.length_field_length + len(self.data) * self._single_element_length
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+
+        This method returns a string representation of the object by iterating over the `data` list and calling the `__repr__` method of each element.
+
+        Returns:
+            str: The string representation of the object.
+        """
+        return "[" + ", ".join([str(x) for x in self.data]) + "]"
 
     def serialize(self) -> bytes:
         """
@@ -864,6 +897,12 @@ class SomeIpFixedSizeString(Generic[T]):
         elif self.encoding == "utf-16le" or self.encoding == "utf-16be":
             return (self.size * 2) + len(codecs.BOM_UTF16_LE)
         raise ValueError("Unknown encoding")
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+        """
+        return self._data
 
     def serialize(self) -> bytes:
         """
@@ -1032,6 +1071,12 @@ class SomeIpDynamicSizeString(Generic[T]):
             int: The length of the string.
         """
         return self._length
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+        """
+        return self._data
 
     def serialize(self) -> bytes:
         """
